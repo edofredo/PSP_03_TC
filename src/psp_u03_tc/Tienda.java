@@ -5,8 +5,15 @@
  */
 package psp_u03_tc;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Date;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import util.Operacion;
 
 
 
@@ -20,7 +27,7 @@ public class Tienda extends Thread {
     private int socketServidor = 5000;
     private String operacion;
     private int cantidad;
-    private Socket tienda = null;
+    private Socket skTienda = null;
     
     public Tienda() {
        Thread hiloConexion = new Thread(this,"hiloConexion");
@@ -30,7 +37,11 @@ public class Tienda extends Thread {
     
     @Override
     public void run(){
-        
+        try {
+            skTienda = new Socket(ipServidor, socketServidor);
+        } catch (IOException ex) {
+            System.out.println("no se pudo conectar por " + ex.getMessage());;
+        }
     }  
         
     private void comunicacionUsuario(){
@@ -38,13 +49,14 @@ public class Tienda extends Thread {
         String comando = "";
         Scanner sc = new Scanner(System.in);
         while(!comando.equalsIgnoreCase("Salir")){
-            System.out.println("Escriba comando: insertar/ retirar/ consultar/ "
+            System.out.println("Escriba comando: insertar/ retirar/ consultar/ salir/"
                     + "configurar");
             comando = sc.nextLine().toLowerCase();
             
             switch(comando){
-                case  "insertar":
+                case "insertar":
                     System.out.println("I");
+                    insertar();
                     break;
                 case "retirar":
                     System.out.println("R");
@@ -64,8 +76,28 @@ public class Tienda extends Thread {
             }
         }
     }     
-        
-     public String getIpServidor() {
+    
+    public void insertar() {
+        Operacion op = new Operacion("insertar", 10);
+
+        try {
+            ObjectOutputStream salidaAServidor
+                    = new ObjectOutputStream(skTienda.getOutputStream());
+            ObjectInputStream entradaDeServidor
+                    = new ObjectInputStream(skTienda.getInputStream());
+
+            salidaAServidor.writeObject(op);
+            Operacion respuesta = (Operacion) entradaDeServidor.readObject();
+            System.out.println(respuesta.toString());
+        } catch (IOException ex) {
+            System.out.println("io" + ex.getMessage());
+        } catch (ClassNotFoundException ex) {
+            System.out.println("clas" + ex.getMessage());
+        }
+
+    }
+    
+    public String getIpServidor() {
         return ipServidor;
     }
 
