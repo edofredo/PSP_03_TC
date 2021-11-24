@@ -13,9 +13,8 @@ import java.util.Date;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import util.Operacion;
-
-
 
 /**
  *
@@ -28,47 +27,67 @@ public class Tienda extends Thread {
     private String operacion;
     private int cantidad;
     private Socket skTienda = null;
+    private Operacion op;
+    Thread hiloConexion;
+    private Scanner sc = new Scanner(System.in);
     
     public Tienda() {
-       Thread hiloConexion = new Thread(this,"hiloConexion");
+       configConexion();
+       hiloConexion = new Thread(this,"hiloConexion");
        hiloConexion.start();
        comunicacionUsuario();
     }
     
     @Override
     public void run(){
-        try {
-            skTienda = new Socket(ipServidor, socketServidor);
-        } catch (IOException ex) {
-            System.out.println("no se pudo conectar por " + ex.getMessage());;
+        
+        while (skTienda == null || !skTienda.isConnected()) {
+            try {
+                skTienda = new Socket(ipServidor, socketServidor);
+                JOptionPane.showMessageDialog(null, "Tienda conectada al almacén");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(null, "No se pudo conectar");
+                configConexion();
+            }
+
         }
     }  
         
     private void comunicacionUsuario(){
         boolean salir = false;
         String comando = "";
-        Scanner sc = new Scanner(System.in);
-        while(!comando.equalsIgnoreCase("Salir")){
+        while(!salir){
             System.out.println("Escriba comando: insertar/ retirar/ consultar/ salir/"
                     + "configurar");
             comando = sc.nextLine().toLowerCase();
             
-            switch(comando){
+            switch (comando) {
                 case "insertar":
                     System.out.println("I");
-                    insertar();
+                    insertar(10);
                     break;
                 case "retirar":
                     System.out.println("R");
+                    retirar(10);
                     break;
                 case "consultar":
                     System.out.println("C");
+                    consultar();
                     break;
                 case "configurar":
-                    System.out.println("CO");
+                    configConexion();
                     break;
                 case "salir":
                     System.out.println("Adios");
+                    salir();
+                    salir=true;
+                    {
+                        try {
+                            skTienda.close();
+                        } catch (IOException ex) {
+                            Logger.getLogger(Tienda.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
                     break;
                 default:
                     System.out.println("Escriba un comando valido");
@@ -77,9 +96,34 @@ public class Tienda extends Thread {
         }
     }     
     
-    public void insertar() {
-        Operacion op = new Operacion("insertar", 10);
-
+    private void insertar(int chirimoyas) {
+        op = new Operacion("insertar", chirimoyas);
+        conexion();
+    }
+    
+    private void retirar(int chirimoyas){
+        op = new Operacion("retirar", -chirimoyas);
+        conexion();
+    }
+    
+    private void consultar(){
+        op = new Operacion("consultar");
+        conexion();
+    }
+    
+    private void configConexion() {
+        String ip = JOptionPane.showInputDialog("Introduce IP");
+        int puerto = Integer.parseInt(JOptionPane.showInputDialog("Introduce Puerto"));
+        ipServidor = ip;
+        socketServidor = puerto;
+    }
+    
+    private void salir(){
+        op = new Operacion("salir");
+        conexion();
+    }
+    
+    private void conexion(){
         try {
             ObjectOutputStream salidaAServidor
                     = new ObjectOutputStream(skTienda.getOutputStream());
@@ -87,14 +131,13 @@ public class Tienda extends Thread {
                     = new ObjectInputStream(skTienda.getInputStream());
 
             salidaAServidor.writeObject(op);
-            Operacion respuesta = (Operacion) entradaDeServidor.readObject();
-            System.out.println(respuesta.toString());
+            //Operacion respuesta = (Operacion) entradaDeServidor.readObject();
+            //System.out.println(respuesta.toString());
         } catch (IOException ex) {
             System.out.println("io" + ex.getMessage());
-        } catch (ClassNotFoundException ex) {
-            System.out.println("clas" + ex.getMessage());
-        }
-
+        } //catch (ClassNotFoundException ex) {
+          //  System.out.println("clas" + ex.getMessage());
+        //}
     }
     
     public String getIpServidor() {
