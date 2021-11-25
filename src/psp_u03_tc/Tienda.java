@@ -22,8 +22,8 @@ import util.Operacion;
  */
 public class Tienda extends Thread {
     
-    private String ipServidor = "Localhost";
-    private int socketServidor = 5000;
+    private String ipServidor = "";
+    private int socketServidor;
     private String operacion;
     private int cantidad;
     private Socket skTienda = null;
@@ -44,7 +44,7 @@ public class Tienda extends Thread {
         while (skTienda == null || !skTienda.isConnected()) {
             try {
                 skTienda = new Socket(ipServidor, socketServidor);
-                JOptionPane.showMessageDialog(null, "Tienda conectada al almacén");
+                JOptionPane.showMessageDialog(null, "Te has conectado al almacén");
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(null, "No se pudo conectar");
                 configConexion();
@@ -53,69 +53,107 @@ public class Tienda extends Thread {
         }
     }  
         
-    private void comunicacionUsuario(){
+    private void comunicacionUsuario() {
         boolean salir = false;
-        String comando = "";
-        while(!salir){
-            System.out.println("Escriba comando: insertar/ retirar/ consultar/ salir/"
-                    + "configurar");
-            comando = sc.nextLine().toLowerCase();
+        while (!salir) {
+            String comando = "";
+            try {   
+            comando = JOptionPane.showInputDialog("Escriba comando: insertar/ retirar/ consultar/ salir/"
+                    + "configurar").toLowerCase();
+            } catch (Exception e) {
+                
+                System.out.println(e);
+                
+            }
             
-            switch (comando) {
-                case "insertar":
-                    System.out.println("I");
-                    insertar(10);
-                    break;
-                case "retirar":
-                    System.out.println("R");
-                    retirar(10);
-                    break;
-                case "consultar":
-                    System.out.println("C");
-                    consultar();
-                    break;
-                case "configurar":
-                    configConexion();
-                    break;
-                case "salir":
-                    System.out.println("Adios");
-                    salir();
-                    salir=true;
-                    {
-                        try {
-                            skTienda.close();
-                        } catch (IOException ex) {
-                            Logger.getLogger(Tienda.class.getName()).log(Level.SEVERE, null, ex);
+                switch (comando) {
+                    case "insertar":
+
+                        insertar();
+                        break;
+                    case "retirar":
+
+                        retirar();
+                        break;
+                    case "consultar":
+
+                        consultar();
+                        break;
+                    case "configurar":
+                        configConexion();
+                        break;
+                    case "salir":
+
+                        salir();
+                        salir = true;
+                         {
+                            try {
+                                skTienda.close();
+                            } catch (IOException ex) {
+                                Logger.getLogger(Tienda.class.getName()).log(Level.SEVERE, null, ex);
+                            }
                         }
-                    }
-                    break;
-                default:
-                    System.out.println("Escriba un comando valido");
-                    break;
+                        break;
+                    default:
+                        JOptionPane.showMessageDialog(null,"Escriba un comando valido");
+                        break;
+                }
+
             }
         }
-    }     
     
-    private void insertar(int chirimoyas) {
+    
+    private void insertar() {
+        int chirimoyas = 0;
+        try {
+            chirimoyas = Integer.parseInt(JOptionPane.showInputDialog("Cuantas desea insertar?"));
+        } catch (Exception e) {
+            System.out.println(e);
+        }
         op = new Operacion("insertar", chirimoyas);
         conexion();
     }
     
-    private void retirar(int chirimoyas){
+    private void retirar(){
+        int chirimoyas = 0;
+        try {
+            chirimoyas = Integer.parseInt(JOptionPane.showInputDialog("Cuantas desea retirar?"));
+        } catch (Exception e) {
+            System.out.println(e);
+        }
         op = new Operacion("retirar", -chirimoyas);
         conexion();
     }
     
     private void consultar(){
         op = new Operacion("consultar");
-        conexion();
+        try {
+            ObjectOutputStream salidaAServidor
+                    = new ObjectOutputStream(skTienda.getOutputStream());
+            ObjectInputStream entradaDeServidor
+                    = new ObjectInputStream(skTienda.getInputStream());
+
+            salidaAServidor.writeObject(op);
+            op = (Operacion) entradaDeServidor.readObject();
+            JOptionPane.showMessageDialog(null,"El stock de chirimoyas es de " + op.getCantidad() + ".\n");
+        } catch (IOException ex) {
+            System.out.println("io" + ex.getMessage());
+        } catch (ClassNotFoundException ex) {
+            System.out.println("clas" + ex.getMessage());
+        }
+        
     }
     
     private void configConexion() {
-        String ip = JOptionPane.showInputDialog("Introduce IP");
-        int puerto = Integer.parseInt(JOptionPane.showInputDialog("Introduce Puerto"));
-        ipServidor = ip;
-        socketServidor = puerto;
+
+        if (skTienda == null ||!skTienda.isConnected()) {
+            String ip = JOptionPane.showInputDialog("Introduce IP");
+            int puerto = Integer.parseInt(JOptionPane.showInputDialog("Introduce Puerto"));
+            ipServidor = ip;
+            socketServidor = puerto;
+        } else {
+            JOptionPane.showMessageDialog(null, "La conexión con el almacen ya está establecida");
+        }
     }
     
     private void salir(){
@@ -131,13 +169,9 @@ public class Tienda extends Thread {
                     = new ObjectInputStream(skTienda.getInputStream());
 
             salidaAServidor.writeObject(op);
-            //Operacion respuesta = (Operacion) entradaDeServidor.readObject();
-            //System.out.println(respuesta.toString());
         } catch (IOException ex) {
-            System.out.println("io" + ex.getMessage());
-        } //catch (ClassNotFoundException ex) {
-          //  System.out.println("clas" + ex.getMessage());
-        //}
+            JOptionPane.showMessageDialog(null,"io" + ex.getMessage());
+        }
     }
     
     public String getIpServidor() {
